@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Entropy Checker</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --accent: #38bdf8;
+            --text: #f1f5f9;
+        }
+
+        body {
+            background-color: var(--bg);
+            background-image: radial-gradient(circle at top right, #1e293b, #0f172a);
+            color: var(--text);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .container {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2.5rem;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            width: 400px;
+            z-index: 10;
+            text-align: center;
+        }
+
+        h1 { margin: 0 0 0.5rem 0; font-size: 1.5rem; letter-spacing: -0.025em; }
+        p { color: #94a3b8; font-size: 0.9rem; margin-bottom: 2rem; }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px 20px;
+            border-radius: 12px;
+            border: 2px solid #334155;
+            background: #0f172a;
+            color: white;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        input:focus { border-color: var(--accent); }
+
+        canvas {
+            margin: 10px 0;
+            border-radius: 50%;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .stat-card {
+            background: rgba(15, 23, 42, 0.5);
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .stat-label { font-size: 0.75rem; color: #64748b; display: block; }
+        .stat-value { font-size: 1.1rem; font-weight: bold; color: var(--accent); }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Entropy Engine</h1>
+        <p>Real-time cryptographic strength analysis</p>
+
+        <div class="input-group">
+            <input type="text" id="pwdInput" placeholder="Enter password..." spellcheck="false">
+        </div>
+
+        <canvas id="gaugeCanvas" width="200" height="120"></canvas>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span class="stat-label">ENTROPY BITS</span>
+                <span id="bitsText" class="stat-value">0.00</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">STRENGTH</span>
+                <span id="strengthText" class="stat-value">None</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const input = document.getElementById('pwdInput');
+        const canvas = document.getElementById('gaugeCanvas');
+        const ctx = canvas.getContext('2d');
+        const bitsDisplay = document.getElementById('bitsText');
+        const strengthDisplay = document.getElementById('strengthText');
+
+        let currentEntropy = 0;
+
+        function drawGauge(entropy) {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height - 10;
+            const radius = 80;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Background Track
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, Math.PI, 2 * Math.PI);
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 12;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+
+            // Calculate Angle (Max out at 128 bits)
+            const percentage = Math.min(entropy / 128, 1);
+            const endAngle = Math.PI + (Math.PI * percentage);
+
+            // Determine Color
+            let color = '#ff4d4d'; // Weak
+            if (entropy >= 30) color = '#fbbf24'; // Medium
+            if (entropy >= 60) color = '#22c55e'; // Strong
+            if (entropy >= 100) color = '#a855f7'; // Ultra
+
+            // Draw Active Bar
+            if (entropy > 0) {
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, Math.PI, endAngle);
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 12;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+
+                // Add a glow effect
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = color;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        input.addEventListener('input', (e) => {
+            const val = e.target.value;
+            let pool = 0;
+
+            if (val.length > 0) {
+                if (/[a-z]/.test(val)) pool += 26;
+                if (/[A-Z]/.test(val)) pool += 26;
+                if (/[0-9]/.test(val)) pool += 10;
+                if (/[^a-zA-Z0-9]/.test(val)) pool += 33;
+
+                currentEntropy = val.length * (Math.log(pool) / Math.log(2));
+            } else {
+                currentEntropy = 0;
+            }
+
+            // Update Text
+            bitsDisplay.innerText = currentEntropy.toFixed(2);
+            
+            if (currentEntropy === 0) strengthDisplay.innerText = "None";
+            else if (currentEntropy < 30) strengthDisplay.innerText = "Weak";
+            else if (currentEntropy < 60) strengthDisplay.innerText = "Medium";
+            else if (currentEntropy < 100) strengthDisplay.innerText = "Strong";
+            else strengthDisplay.innerText = "Quantum Safe";
+
+            drawGauge(currentEntropy);
+        });
+
+        // Initial draw
+        drawGauge(0);
+    </script>
+</body>
+</html>
